@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Control</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #f4f5f7;
+  --card:      #ffffff;
+  --border:    #e8eaed;
+  --text:      #111827;
+  --soft:      #6b7280;
+  --urgent:    #dc2626;
+  --overlap:   #d97706;
+  --blue:      #2563eb;
+  --green:     #16a34a;
+  --radius:    10px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── HEADER ── */
+#header {
+  background: #0f172a;
+  padding: 14px 24px 12px;
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap;
+}
+#header h1 { font-size: 1rem; font-weight: 700; color: white; letter-spacing: -0.2px; }
+#header h1 span { color: #60a5fa; }
+#header-right { display: flex; align-items: center; gap: 12px; }
+#date-display { font-size: 0.72rem; color: #64748b; }
+.ctrl-btn {
+  font-size: 0.68rem; padding: 4px 10px; cursor: pointer;
+  background: #1e293b; color: #64748b; border: 1px solid #334155;
+  border-radius: 6px; font-weight: 600;
+}
+.ctrl-btn:hover { color: #ef4444; border-color: #ef4444; }
+
+/* ── MISSION BAR ── */
+#mission-bar {
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  padding: 10px 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+#mission-icon { font-size: 1rem; }
+#mission-label { font-size: 0.62rem; color: #60a5fa; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap; }
+#mission-text { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; }
+#mission-sep { color: #334155; }
+
+/* ── PAGE BODY ── */
+#page { max-width: 900px; margin: 0 auto; padding: 20px 20px 60px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── SECTION CARD (shared wrapper) ── */
+.section-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ── EMERGENCY ── */
+#emergency { padding: 12px 16px; display: flex; gap: 10px; align-items: flex-start; }
+#emergency .em-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+#emergency h3 { font-size: 0.68rem; font-weight: 800; color: var(--urgent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+#emergency p  { font-size: 0.75rem; color: #7f1d1d; line-height: 1.6; }
+#emergency a  { color: var(--urgent); font-weight: 700; text-decoration: none; }
+#emergency { background: #fef2f2; border-color: #fecaca; }
+
+/* ── TODAY'S FOCUS ── */
+#focus-header {
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#focus-title { font-size: 0.9rem; font-weight: 800; color: white; }
+#focus-date  { font-size: 0.68rem; color: rgba(255,255,255,.65); margin-top: 1px; }
+#focus-count { font-size: 0.68rem; font-weight: 700; color: rgba(255,255,255,.8); background: rgba(255,255,255,.15); padding: 3px 9px; border-radius: 20px; }
+#focus-body  { padding: 4px 0 8px; }
+
+.focus-group-label {
+  font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--soft);
+  padding: 10px 16px 4px; border-top: 1px solid var(--border);
+}
+.focus-group-label:first-child { border-top: none; }
+
+.focus-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; cursor: pointer;
+  transition: background .1s;
+}
+.focus-item:hover { background: #f9fafb; }
+.focus-item.is-overlap { border-left: 3px solid var(--overlap); padding-left: 13px; background: #fffdf5; }
+.focus-item.is-overlap:hover { background: #fffbeb; }
+.focus-item.focus-done { opacity: .45; }
+
+.focus-check {
+  width: 18px; height: 18px; flex-shrink: 0;
+  border: 2px solid #d1d5db; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 800; color: white;
+  transition: all .15s; background: white;
+}
+.focus-item.focus-done .focus-check { background: var(--green); border-color: var(--green); }
+.focus-item.is-overlap .focus-check { border-color: var(--overlap); }
+
+.focus-text { flex: 1; font-size: 0.82rem; line-height: 1.4; color: var(--text); }
+.focus-item.focus-done .focus-text { text-decoration: line-through; color: var(--soft); }
+
+.focus-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.f-urgent-badge { font-size: 0.58rem; font-weight: 800; padding: 2px 5px; border-radius: 6px; background: #fef2f2; color: var(--urgent); border: 1px solid #fecaca; }
+.f-overlap-badge { font-size: 0.58rem; font-weight: 800; padding: 2px 5px; border-radius: 6px; background: #fffbeb; color: var(--overlap); border: 1px solid #fde68a; }
+.f-project-tag { font-size: 0.6rem; color: var(--soft); }
+
+.focus-weekend {
+  text-align: center; padding: 32px 20px;
+}
+.focus-weekend .w-emoji { font-size: 2.5rem; margin-bottom: 10px; }
+.focus-weekend .w-main { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.focus-weekend .w-sub  { font-size: 0.78rem; color: var(--soft); }
+
+.focus-empty { text-align: center; padding: 24px; font-size: 0.85rem; color: var(--green); font-weight: 600; }
+
+/* ── OVERLAP PANEL ── */
+#overlap-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 16px; cursor: pointer; user-select: none;
+}
+#overlap-toggle:hover { background: #fffdf5; }
+#overlap-toggle-left { display: flex; align-items: center; gap: 8px; }
+#overlap-label { font-size: 0.72rem; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; }
+#overlap-pill { font-size: 0.62rem; font-weight: 700; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 2px 7px; border-radius: 10px; }
+#overlap-chevron { font-size: 0.75rem; color: #92400e; transition: transform .2s; }
+#overlap-body { border-top: 1px solid #fde68a; }
+.overlap-row { border-bottom: 1px solid #fde68a; }
+.overlap-row:last-child { border-bottom: none; }
+.ov-badge { font-size: 0.6rem; font-weight: 800; background: var(--overlap); color: white; padding: 2px 7px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
+.ov-top { display: flex; align-items: center; gap: 8px; padding: 10px 16px; cursor: pointer; transition: background .1s; }
+.ov-top:hover { background: #fef3c7; }
+.overlap-row.ov-expanded .ov-top { background: #fef3c7; }
+.ov-title { flex: 1; font-size: 0.8rem; font-weight: 700; color: #78350f; }
+.ov-expand { font-size: 0.7rem; color: #d97706; transition: transform .2s; flex-shrink: 0; }
+.overlap-row.ov-expanded .ov-expand { transform: rotate(90deg); }
+.ov-details { display: none; padding: 0 16px 10px 16px; border-top: 1px solid #fde68a; }
+.overlap-row.ov-expanded .ov-details { display: block; animation: fadeIn .15s ease; }
+.ov-desc  { color: #92400e; line-height: 1.5; font-size: 0.75rem; margin-top: 8px; }
+.ov-projects { font-size: 0.68rem; color: #b45309; margin-top: 5px; font-weight: 700; }
+#overlap-section { border-color: #fde68a; background: #fffbeb; }
+
+/* ── PROJECT GRID ── */
+#projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px,1fr)); gap: 14px; }
+
+/* ── PROJECT CARD ── */
+.proj-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+
+.proj-head {
+  padding: 12px 14px; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 11px;
+}
+.proj-head:hover { filter: brightness(.97); }
+.proj-icon { font-size: 1.2rem; flex-shrink: 0; }
+.proj-info { flex: 1; }
+.proj-name { font-size: 0.88rem; font-weight: 700; color: white; }
+.proj-desc { font-size: 0.68rem; color: rgba(255,255,255,.7); margin-top: 1px; }
+.proj-prog-wrap { display: flex; align-items: center; gap: 7px; margin-top: 5px; }
+.proj-bar { flex: 1; height: 3px; background: rgba(255,255,255,.25); border-radius: 3px; overflow: hidden; }
+.proj-bar-fill { height: 100%; background: rgba(255,255,255,.85); border-radius: 3px; transition: width .3s; }
+.proj-frac { font-size: 0.62rem; color: rgba(255,255,255,.75); font-weight: 600; }
+.proj-chev { font-size: 0.7rem; color: rgba(255,255,255,.6); transition: transform .2s; }
+.proj-card.collapsed .proj-chev { transform: rotate(-90deg); }
+
+.proj-body { padding: 6px 0 10px; }
+.proj-card.collapsed .proj-body { display: none; }
+
+.task-group-lbl {
+  font-size: 0.58rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.7px; color: var(--soft);
+  padding: 8px 14px 3px; border-top: 1px solid var(--border);
+}
+.task-group-lbl:first-child { border-top: none; }
+.task-group-lbl.urgent { color: var(--urgent); }
+.task-group-lbl.week   { color: #7c3aed; }
+
+/* ── TASK ROW (collapsed default) ── */
+.task-row {
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: background .1s;
+}
+.task-row:hover { background: #f9fafb; }
+.task-row.expanded { background: #f0f6ff; border-bottom-color: #dbeafe; }
+.task-row.inprog   { background: #f0f6ff; }
+
+.task-top {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+}
+.task-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--border); margin-top: 1px;
+}
+.task-row.urgent-row .task-dot { background: var(--urgent); animation: pulse 1.6s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.task-label { flex: 1; font-size: 0.81rem; line-height: 1.4; color: var(--text); }
+.task-row.inprog .task-label { color: var(--blue); }
+
+.task-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.t-deadline { font-size: 0.62rem; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: #f1f5f9; color: var(--soft); white-space: nowrap; }
+.task-row.urgent-row .t-deadline { background: #fef2f2; color: var(--urgent); }
+.t-overlap-dot { font-size: 0.72rem; color: var(--overlap); }
+.t-expand { font-size: 0.7rem; color: #cbd5e1; transition: transform .2s; margin-left: 2px; }
+.task-row.expanded .t-expand { transform: rotate(90deg); }
+
+.t-btn {
+  font-size: 0.62rem; font-weight: 700; padding: 3px 7px;
+  border-radius: 5px; border: 1px solid; cursor: pointer;
+  transition: all .12s; white-space: nowrap;
+}
+.t-btn-prog { background: #eff6ff; color: var(--blue); border-color: #bfdbfe; }
+.t-btn-prog:hover, .t-btn-prog.on { background: var(--blue); color: white; border-color: var(--blue); }
+.t-btn-done { background: #f0fdf4; color: var(--green); border-color: #bbf7d0; }
+.t-btn-done:hover { background: var(--green); color: white; border-color: var(--green); }
+
+/* ── TASK DETAILS (hidden by default) ── */
+.task-details { display: none; padding: 0 14px 10px 27px; animation: fadeIn .15s ease; }
+.task-row.expanded .task-details { display: block; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+
+.task-notes { font-size: 0.74rem; color: var(--soft); line-height: 1.5; margin-bottom: 6px; }
+.task-links { display: flex; flex-wrap: wrap; gap: 5px; }
+.t-phone, .t-url {
+  font-size: 0.68rem; font-weight: 600; padding: 3px 8px;
+  border-radius: 6px; border: 1px solid; text-decoration: none; display: inline-block;
+}
+.t-phone { background: #eff6ff; color: var(--blue); border-color: #bfdbfe; }
+.t-url   { background: #f0fdf4; color: var(--green); border-color: #bbf7d0; }
+.t-overlap-detail { font-size: 0.68rem; font-weight: 700; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 3px 8px; border-radius: 6px; display: inline-block; }
+
+/* ── COMPLETED DRAWER ── */
+.done-drawer { border-top: 1px dashed var(--border); margin-top: 4px; }
+.done-toggle {
+  font-size: 0.68rem; font-weight: 700; color: var(--green);
+  padding: 7px 14px; cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 4px;
+}
+.done-toggle:hover { opacity: .75; }
+.done-list { }
+.done-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; opacity: .5;
+}
+.done-row-text { flex: 1; font-size: 0.78rem; color: var(--soft); text-decoration: line-through; }
+.restore-btn {
+  font-size: 0.62rem; font-weight: 700; padding: 2px 7px;
+  border: 1px solid #d1d5db; border-radius: 5px; background: white;
+  color: var(--soft); cursor: pointer;
+}
+.restore-btn:hover { border-color: var(--overlap); color: var(--overlap); background: #fffbeb; }
+
+.proj-done-banner { text-align: center; padding: 14px; font-size: 0.82rem; color: var(--green); font-weight: 600; }
+
+@media (max-width: 580px) {
+  #projects { grid-template-columns: 1fr; }
+  #page { padding: 14px 12px 60px; }
+  #header { padding: 12px 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <h1>🎯 Mission <span>Control</span></h1>
+  <div id="header-right">
+    <span id="date-display"></span>
+
+    <button class="ctrl-btn" onclick="confirmReset()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- MISSION BAR -->
+<div id="mission-bar">
+  <span id="mission-icon">🎯</span>
+  <span id="mission-label">Now&nbsp;</span>
+  <span id="mission-sep">·</span>
+  <span id="mission-text">Loading…</span>
+</div>
+
+<!-- PAGE -->
+<div id="page">
+
+  <!-- TODAY'S FOCUS -->
+  <div class="section-card">
+    <div id="focus-header">
+      <div>
+        <div id="focus-title">📋 Today's Focus</div>
+        <div id="focus-date"></div>
+      </div>
+      <span id="focus-count"></span>
+    </div>
+    <div id="focus-body"></div>
+  </div>
+
+  <!-- OVERLAP ALERTS -->
+  <div class="section-card" id="overlap-section">
+    <div id="overlap-toggle" onclick="toggleOverlaps()">
+      <div id="overlap-toggle-left">
+        <span>⚡</span>
+        <span id="overlap-label">Overlap Alerts</span>
+        <span id="overlap-pill"></span>
+      </div>
+      <span id="overlap-chevron">▼</span>
+    </div>
+    <div id="overlap-body" style="display:none"></div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div id="projects"></div>
+
+  <!-- EMERGENCY -->
+  <div class="section-card" id="emergency">
+    <div class="em-icon">⚠️</div>
+    <div>
+      <h3>Mom's Emergency Contacts</h3>
+      <p>
+        Chest pain / shortness of breath → <strong>911</strong> or Sacred Heart ER &nbsp;·&nbsp; Tell ER: BNP 314 · CHF · ER visit Mar 12, 2026<br>
+        Cardiology / Nurse Katie: <a href="tel:8509697979">850-969-7979</a> &nbsp;·&nbsp; PCP Dr. LeGall fax: <a href="tel:8509086819">850-908-6819</a><br>
+        5+ lb weight gain in 1–2 days → call doctor immediately
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+const OVERLAP_GROUPS = [
+  { id:'og1', label:'Call VA Clinic (850-912-2000) — ONE CALL covers TWO projects', desc:'Ask: (1) A&A increase $1,117→$1,558/mo, (2) HISA grant surviving spouse eligibility, (3) VSO referral.', projects:'💰 VA Benefits + 🏠 Home Repair', taskIds:['repair-7','va-call-va-clinic'] },
+  { id:'og2', label:'Gather documents — ONE SESSION covers TWO projects', desc:'DD-214 · SSA award letter · DFAS pension · 3 months bank statements · homestead exemption · driveway photos. Needed for BOTH VA filing AND all home repair applications.', projects:'🏠 Home Repair + 💰 VA Benefits', taskIds:['repair-1','va-docs-gather'] },
+  { id:'og3', label:'CHF diagnosis letter — ONE DOCUMENT covers THREE projects', desc:'Letter from Dr. Odezulu explicitly stating driveway fall risk. Required for all home repair applications AND VA medical forms.', projects:'🏥 CHF Care + 🏠 Home Repair + 💰 VA Benefits', taskIds:['chf-6','repair-docs','va-docs'] },
+  { id:'og4', label:'Zero-Based Budgeting — Life Skills AND Rewind Business Plan', desc:'Learning ZBB (Life Skills Ch.3) gives you the exact framework for Rewind\'s startup financial model.', projects:'📚 Life Skills + 📼 Rewind Business', taskIds:['life-3','rewind-life'] },
+  { id:'og5', label:'Pensacola story — journalism clip AND Rewind community presence', desc:'One story builds your clip AND drives community buzz for the store.', projects:'📰 Freelance Pitching + 📼 Rewind Business', taskIds:['pitch-rewind','rewind-7'] }
+];
+
+const CATEGORY = { chf:'🏥 Health & Caregiving', repair:'🏛️ Benefits & Home Repair', va:'🏛️ Benefits & Home Repair', pitch:'✍️ Writing & Pitching', rewind:'📼 Business', life:'💡 Financial Foundation' };
+
+const PROJECTS = [
+  { id:'chf', name:"Mom's CHF Care", icon:'🏥', color:'#dc2626', desc:'Dr. Odezulu · HCA Florida West · Next: ablation May 8', tasks:[
+    { id:'chf-1',  text:'Call Nurse Katie — Reschedule Echo & Stress Test before May 8', deadline:'OVERDUE', urgent:true,  phone:'850-969-7979', notes:'All 3 pre-ablation requirements (labs, echo, stress test) must complete AND be cleared by Dr. O before May 8. Currently scheduled Jun 12 — far too late.' },
+    { id:'chf-2',  text:'Fasting blood labs at Quest Diagnostics', deadline:'Apr 29 · 7:10 AM', urgent:true,  notes:'8333 N Davis Hwy, Pensacola 32514 · Confirmation: CMRBOZ · Must be fasting.' },
+    { id:'chf-3',  text:'PCP Follow-up with Dr. LeGall at Baptist Southtown', deadline:'Apr 29 · 9:00 AM', urgent:true,  phone:'850-969-7979', notes:'Confirm chart notes from Dr. O received before visit. Fax: 850-908-6819. Nurse: Ally.' },
+    { id:'chf-6',  text:'Get CHF diagnosis letter — explicitly stating driveway fall risk', deadline:'ASAP', urgent:true,  phone:'850-969-7979', overlap:'og3', notes:'Same letter needed for home repair applications AND VA medical forms. One call, one letter, three uses.' },
+    { id:'chf-7',  text:'Ablation — pending cardiac clearance from Dr. O', deadline:'May 8', urgent:true,  notes:'Cannot proceed until echo + stress test results returned. Dr. Degges\'s office notified.' },
+    { id:'chf-8',  text:'Echocardiogram at HCA Florida West — RESCHEDULE from Jun 12', deadline:'Within 2 wks', urgent:true,  notes:'Check in 7:45 AM / appt 8:00 AM. No prep. One adult companion allowed.' },
+    { id:'chf-9',  text:'Nuclear Stress Test at HCA Florida West — RESCHEDULE from Jun 12', deadline:'Same day as Echo', urgent:true,  notes:'Nothing to eat/drink 4 hrs prior. No nicotine, caffeine, chocolate.' },
+    { id:'chf-4',  text:'Watch for 30-Day Cardiac Monitor in mail', deadline:'This Week', urgent:false, notes:'Expected within ~1 week. Wear as instructed. Will auto-alert Dr. O if dangerous rhythm detected.' },
+    { id:'chf-5',  text:'Buy upper-arm BP cuff (~$20) and begin daily log', deadline:'This Week', urgent:false, notes:'Upper-arm preferred over wrist. Available at Walmart. Log on Nurse Katie\'s form. Bring to Aug 6 follow-up.' },
+    { id:'chf-10', text:'Cardiology follow-up with Dr. Odezulu', deadline:'Aug 6 · 11:00 AM', urgent:false, phone:'850-969-7979', notes:'HCA Florida West Cardiology Specialists. Have daily BP log ready.' }
+  ]},
+  { id:'repair', name:"Home Repair — Mom's Driveway", icon:'🏠', color:'#ea580c', desc:"Veteran's widow · Fall-risk driveway · Pensacola / Escambia County", tasks:[
+    { id:'repair-1',    text:'Gather all documents before any calls', deadline:'TODAY — First', urgent:true,  overlap:'og2', notes:'OVERLAP with VA Benefits — same gather. DD-214 or death cert · SSA award letter · DFAS pension · 3 months bank statements · CHF letter · dated driveway photos · homestead exemption proof.' },
+    { id:'repair-2',    text:'Call NWFLAAA Elder Helpline — call this first', deadline:'ASAP', urgent:true,  phone:'850-494-7100', notes:'Say: "My mother is a veteran\'s widow with CHF. Her driveway is a documented fall hazard. I need telephone screening for in-home services and referrals to home repair programs." Toll-free: 1-866-531-8011. One call activates the entire referral pipeline.' },
+    { id:'repair-3',    text:'Call Council on Aging — Telephone screening + Meals on Wheels', deadline:'Same Day', urgent:true,  phone:'850-494-7101', notes:'Call WAITING LIST line (850-494-7101) — NOT the main number (850-432-1475). Request telephone screening. Ask about Community Care Closet (free walkers, bath benches).' },
+    { id:'repair-7',    text:'Call VA Clinic — HISA Grant inquiry (up to $6,800)', deadline:'ASAP', urgent:true,  phone:'850-912-2000', overlap:'og1', notes:'OVERLAP with VA Benefits — one call covers both projects. Ask: surviving spouse HISA eligibility + A&A increase + VSO referral. 312 Kenmore Rd, Pensacola FL 32503.' },
+    { id:'repair-4',    text:'Apply online — Rebuilding Together Greater Florida', deadline:'This Week', urgent:true,  url:'rtgfl.org', notes:'"Safe at Home / Aging in Place" program. Apply directly — don\'t wait for a referral.' },
+    { id:'repair-5',    text:'Apply — Escambia County Housing Rehabilitation Program', deadline:'This Week', urgent:true,  phone:'850-595-3478', notes:'Use "health and safety hazard" verbatim. Unincorporated Escambia County → 850-595-3478. City of Pensacola → 850-858-0350.' },
+    { id:'repair-6',    text:'Apply — USDA Section 504 Grant (up to $10,000, no repayment)', deadline:'This Week', urgent:true,  phone:'850-682-2416', notes:'Contact Jeffrey Archer. 3070 Adora Teal Way, Suite C, Crestview FL 32539. Use "health and safety hazard" verbatim. No repayment for elderly applicants.' },
+    { id:'repair-docs', text:'Get CHF diagnosis letter — explicitly stating fall risk from driveway', deadline:'Before Applications', urgent:true,  phone:'850-969-7979', overlap:'og3', notes:'OVERLAP — same letter for Home Repair, VA Benefits, and CHF project. One document, three uses.' },
+    { id:'repair-8',    text:'Monitor My Safe Florida Home Program — Group 1 window', deadline:'Ongoing', urgent:false, url:'mysafeflhome.com', notes:'Group 1 (low-income seniors 60+) gets first access. Funds deplete fast. Apply the moment the window opens.' }
+  ]},
+  { id:'va', name:'VA Benefits & Caregiver Pay', icon:'💰', color:'#16a34a', desc:'Increase A&A: $1,117 → $1,558/mo (+$441) · Skip the $990 fee — file direct', tasks:[
+    { id:'va-docs-gather',   text:'Gather all documents (DD-214, income, medical)', deadline:'TODAY', urgent:true,  overlap:'og2', notes:'OVERLAP with Home Repair — same gather. DD-214 · SSA award letter · DFAS pension $838 · bank statements · CHF letter · homestead exemption.' },
+    { id:'va-call-va-clinic',text:'Call Pensacola VA Clinic — A&A increase + HISA inquiry', deadline:'ASAP', urgent:true,  phone:'850-912-2000', overlap:'og1', notes:'OVERLAP with Home Repair — one call covers both projects. Ask: (1) A&A increase $1,117→$1,558, (2) HISA grant widow eligibility, (3) VSO referral. 312 Kenmore Rd, Pensacola FL 32503.' },
+    { id:'va-2',             text:'Call Escambia County VSO — follow up on voicemail (Apr 20)', deadline:'ASAP', urgent:true,  phone:'850-595-2409', notes:'VSOs Stevan Davis and Lisa Horan. No fees. Ask about A&A increase and Personal Services Contract.' },
+    { id:'va-docs',          text:'Get CHF diagnosis documentation for VA medical forms', deadline:'ASAP', urgent:true,  phone:'850-969-7979', overlap:'og3', notes:'OVERLAP — same letter as home repair applications and CHF project.' },
+    { id:'va-3',             text:'Download VA Form 21-527EZ from VA.gov', deadline:'This Week', urgent:false, url:'va.gov', notes:'Pension with Aid & Attendance claim form.' },
+    { id:'va-4',             text:'Download VA Form 21-2680 from VA.gov', deadline:'This Week', urgent:false, url:'va.gov', notes:'Examination for Housebound Status — required medical documentation.' },
+    { id:'va-5',             text:'Draft Personal Services Contract (Phyllis pays son as caregiver)', deadline:'Before Filing', urgent:false, notes:'Confirm exact amount with VSO first (cited: $2,950/mo). This reduces Phyllis\'s countable income and unlocks the $441/mo increase.' },
+    { id:'va-6',             text:'Research VA PCAFC — family caregiver monthly stipend', deadline:'This Week', urgent:false, url:'caregiver.va.gov', notes:'Program of Comprehensive Assistance for Family Caregivers. Separate from A&A.' },
+    { id:'va-7',             text:'Research Florida Medicaid Home & Community-Based Waiver', deadline:'This Week', urgent:false, notes:'Statewide Medicaid Managed Care Long-Term Care — can pay family caregivers directly.' },
+    { id:'va-8',             text:'Call Florida Hope Navigators (state-level benefits)', deadline:'This Week', urgent:false, phone:'833-438-4673', notes:'Email: HopeNavigators@fdva.fl.gov' }
+  ]},
+  { id:'rewind', name:'Rewind Business', icon:'📼', color:'#7c3aed', desc:'Physical media store · Pensacola, FL · Sell. Trade. Rent. Own. Repair.', tasks:[
+    { id:'rewind-1',    text:'Finalize business plan v5 — funding needs and timeline', deadline:'This Month', urgent:false, notes:'5 revenue streams: retail, trade-ins, rentals, consignment, disc repair. Plan is solid — finalize the numbers.' },
+    { id:'rewind-2',    text:'Source JFJ Easy Pro resurfacer ($200–300 new, under $100 used)', deadline:'Phase 1', urgent:false, url:'ebay.com', notes:'Unlocks Revenue Stream 5 (disc repair service) immediately. ELM USA Eco Pro 2 is Phase 2 upgrade ($400–600 used).' },
+    { id:'rewind-life', text:'Apply Zero-Based Budgeting to Rewind financial model', deadline:'Business Plan', urgent:false, overlap:'og4', notes:'OVERLAP with Life Skills Ch.3 — same learning applies directly to Rewind startup model. Do both simultaneously.' },
+    { id:'rewind-3',    text:'Build ship-to-us landing page (nationwide disc acquisition)', deadline:'Phase 1', urgent:false, notes:'Submission form + quote workflow + prepaid label logistics. Makes geography irrelevant for sourcing.' },
+    { id:'rewind-5',    text:'List disc repair service on eBay for early revenue', deadline:'After resurfacer', urgent:false, url:'ebay.com', notes:'Bulk packages: 50, 100, 200 discs at flat prices. Search "disc repair service" on eBay to see the market.' },
+    { id:'rewind-6',    text:'Contact Pensacola Public Library re: disc repair contract', deadline:'Phase 1', urgent:false, notes:'Libraries are the largest institutional disc repair users. Also: Escambia County School District, thrift stores.' },
+    { id:'rewind-7',    text:'Set up Instagram/Facebook — document incoming hauls', deadline:'Phase 1', urgent:false, overlap:'og5', notes:'OVERLAP with Freelance Pitch — a Pensacola story about physical media revival = a clip AND community buzz for Rewind.' },
+    { id:'rewind-8',    text:'Research estate sales + thrift store routes for inventory', deadline:'Phase 1', urgent:false, notes:'Military PCS families (NAS Pensacola) = high-volume recurring source. Estate sales = 200–500 discs at pennies per unit.' },
+    { id:'rewind-4',    text:'Scout Pensacola storefront locations', deadline:'Phase 1→2', urgent:false, notes:'Near UWF (15,600 students), downtown, or NAS Pensacola corridor. Study Night Owl Video (Brooklyn) as model.' }
+  ]},
+  { id:'pitch', name:'Freelance Pitch Strategy', icon:'📰', color:'#0369a1', desc:"The Multiplication Strategy — One pitch. Do it once. Do it 10 times.", tasks:[
+    { id:'pitch-1', text:'Stage 1: Pitch IndieWire — Ryan Lattanzio (existing relationship)', deadline:'This Week', urgent:true,  notes:'$300–500+ per piece. You already have the relationship. Send the pitch.' },
+    { id:'pitch-2', text:'Stage 1: Pitch Documentary Magazine — Manuel Betancourt', deadline:'This Week', urgent:true,  notes:'$500–1,500 per piece. All assignments paid. Warm contact.' },
+    { id:'pitch-3', text:'Stage 1: Pitch LA Magazine — Chris Nichols (direct line)', deadline:'This Week', urgent:false, notes:'$400–600 per piece. You have the direct line.' },
+    { id:'pitch-rewind', text:'Write Pensacola piece — physical media revival / Rewind story', deadline:'Phase 1', urgent:false, overlap:'og5', notes:'OVERLAP with Rewind — one story builds your clip AND drives community buzz for the store.' },
+    { id:'pitch-4', text:'Stage 2: Pitch The Bitter Southerner (after Stage 1 clips)', deadline:'Stage 2', urgent:false, notes:'$500 · Tuesday Feature · Your voice and geography · Credential for Garden & Gun.' },
+    { id:'pitch-5', text:'Stage 2: Pitch Oxford American (after Stage 1 clips)', deadline:'Stage 2', urgent:false, notes:'$100–300 · Gold standard Southern longform · Opens Smithsonian + Atlantic.' },
+    { id:'pitch-6', text:'Stage 2: Pitch Image Journal / Plough (after Stage 1 clips)', deadline:'Stage 2', urgent:false, notes:'$500–1,000 · Faith and culture lane · Opens The Atlantic ideas desk.' },
+    { id:'pitch-7', text:'Stage 3: Pitch Texas Monthly (after Stage 2 clips)', deadline:'Stage 3', urgent:false, notes:'$1,500–3,000. Best-paying regional in the country.' },
+    { id:'pitch-8', text:'Stage 3: Pitch Garden & Gun (after Bitter Southerner clip)', deadline:'Stage 3', urgent:false, notes:'~$2,500 feature.' },
+    { id:'pitch-9', text:'Stage 3: Pitch The Atlantic (after Oxford American + faith lane)', deadline:'Stage 3', urgent:false, notes:'$750–2,000+.' }
+  ]},
+  { id:'life', name:'Life Skills & Financial Foundation', icon:'📚', color:'#0d9488', desc:'Sequenced guide: Mindset → Money → Generational Wealth', tasks:[
+    { id:'life-1', text:'Ch.1: Tonight — progressive relaxation + 3-scenario visualization', deadline:'Tonight', urgent:false, notes:'Lie down. Clench/release each muscle group feet→head. Then visualize one goal in 3 scenarios: ideal, worst case, likely.' },
+    { id:'life-2', text:'Ch.2: Calculate your current net worth (assets − liabilities)', deadline:'This Week', urgent:false, notes:'Write the number down. Track monthly. This is the only number that truly matters.' },
+    { id:'life-5', text:'Ch.2: List all debts by interest rate — build avalanche payoff plan', deadline:'This Week', urgent:false, notes:'Highest interest rate first. Credit cards at 20–28% destroy wealth faster than investments build it.' },
+    { id:'life-6', text:'Ch.2: Confirm you\'re getting full 401(k) employer match', deadline:'This Week', urgent:false, notes:'Log into employer benefits portal. Never leave free money on the table.' },
+    { id:'life-4', text:'Ch.2: Open High-Yield Savings Account (HYSA) for emergency fund', deadline:'This Month', urgent:false, notes:'Target: 1 month → 3–6 months expenses. Currently paying 4–5% APY.' },
+    { id:'life-7', text:'Ch.2: Open Roth IRA ($7,000/yr limit)', deadline:'This Month', urgent:false, notes:'Fidelity, Vanguard, or Schwab. Low-cost index funds.' },
+    { id:'life-3', text:'Ch.3: Set up Zero-Based Budgeting system', deadline:'This Month', urgent:false, overlap:'og4', notes:'OVERLAP with Rewind — ZBB framework applies directly to Rewind startup financial model.' },
+    { id:'life-8', text:'Ch.4: Research Health Savings Account (HSA)', deadline:'After Budgeting', urgent:false, notes:'Only with a high-deductible health plan. Triple tax advantage.' }
+  ]}
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let taskStatus  = {};   // id → 'todo' | 'inprogress' | 'done'
+let openArchives = {};  // projectId → bool
+let overlapsOpen = true;
+let expandedTasks = {}; // taskId → bool (in-memory only, resets on reload)
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('mc2_status');    if (s)  taskStatus   = JSON.parse(s);
+    const a = localStorage.getItem('mc2_archives');  if (a)  openArchives = JSON.parse(a);
+    const o = localStorage.getItem('mc2_overlaps');  if (o !== null) overlapsOpen = JSON.parse(o);
+  } catch(e) {}
+}
+function saveState() {
+  localStorage.setItem('mc2_status',   JSON.stringify(taskStatus));
+  localStorage.setItem('mc2_archives', JSON.stringify(openArchives));
+  localStorage.setItem('mc2_overlaps', JSON.stringify(overlapsOpen));
+}
+function getStatus(id) { return taskStatus[id] || 'todo'; }
+
+function setStatus(id, st, e) {
+  if (e) e.stopPropagation();
+  taskStatus[id] = st;
+  // sync overlap groups
+  for (const og of OVERLAP_GROUPS) {
+    if (!og.taskIds.includes(id)) continue;
+    for (const tid of og.taskIds) {
+      if (st === 'done') taskStatus[tid] = 'done';
+      else if (st === 'inprogress' && getStatus(tid) === 'todo') taskStatus[tid] = 'inprogress';
+      else if (st === 'todo') taskStatus[tid] = 'todo';
+    }
+  }
+  saveState();
+  renderAll();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderHeader();
+  renderMission();
+  renderFocus();
+  renderOverlaps();
+  renderProjects();
+}
+
+function renderHeader() {
+  const d = new Date();
+  document.getElementById('date-display').textContent =
+    d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('focus-date').textContent =
+    d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+}
+
+function renderMission() {
+  const candidates = [];
+  for (const p of PROJECTS)
+    for (const t of p.tasks)
+      if (getStatus(t.id) !== 'done') candidates.push({t, p});
+
+  candidates.sort((a,b) => {
+    const so = {inprogress:0, todo:1};
+    const sa = so[getStatus(a.t.id)]??1, sb = so[getStatus(b.t.id)]??1;
+    if (sa!==sb) return sa-sb;
+    return (a.t.urgent?0:1)-(b.t.urgent?0:1);
+  });
+
+  if (!candidates.length) {
+    document.getElementById('mission-icon').textContent = '🏆';
+    document.getElementById('mission-text').textContent = 'All missions complete.';
+    return;
+  }
+  const {t, p} = candidates[0];
+  const st = getStatus(t.id);
+  document.getElementById('mission-icon').textContent = st==='inprogress' ? '⚡' : '🎯';
+  document.getElementById('mission-text').textContent =
+    p.icon + ' ' + t.text.replace(/^[^\w\s]*\s*/,'') + (t.deadline ? ' · ' + t.deadline : '');
+}
+
+// ── TODAY'S FOCUS ─────────────────────────────────────────────────────────────
+function buildFocusList() {
+  const seen = new Set(), result = [];
+  const add = (t, pid) => {
+    if (seen.has(t.id) || getStatus(t.id)==='done') return;
+    seen.add(t.id); result.push({t, pid});
+  };
+  // 1. in-progress
+  for (const p of PROJECTS) for (const t of p.tasks) if (getStatus(t.id)==='inprogress') add(t,p.id);
+  // 2. overlap tasks (urgent first)
+  const ovU=[], ovO=[];
+  for (const p of PROJECTS) for (const t of p.tasks) if (t.overlap && getStatus(t.id)!=='done') (t.urgent?ovU:ovO).push({t,pid:p.id});
+  for (const i of [...ovU,...ovO]) add(i.t,i.pid);
+  // 3. urgent
+  for (const p of PROJECTS) for (const t of p.tasks) if (t.urgent && getStatus(t.id)!=='done') add(t,p.id);
+  // 4. this-week
+  if (result.length<8) for (const p of PROJECTS) for (const t of p.tasks)
+    if (!t.urgent && t.deadline && !['Stage','Phase','After'].some(x=>t.deadline.startsWith(x)) && getStatus(t.id)!=='done') add(t,p.id);
+  return result.slice(0,8);
+}
+
+function renderFocus() {
+  const body = document.getElementById('focus-body');
+  const day  = new Date().getDay(); // 0=Sun, 6=Sat
+
+  if (day===0 || day===6) {
+    document.getElementById('focus-count').textContent = 'Weekend';
+    body.innerHTML = `<div class="focus-weekend">
+      <div class="w-emoji">🌿</div>
+      <div class="w-main">Do one good thing for you today.</div>
+      <div class="w-sub">Your projects will be here Monday. Today is yours.</div>
+    </div>`;
+    return;
+  }
+
+  const items = buildFocusList();
+  const done  = items.filter(i=>getStatus(i.t.id)==='done').length;
+  document.getElementById('focus-count').textContent =
+    items.length===0 ? 'All clear ✓' : `${done} / ${items.length} done`;
+
+  if (!items.length) {
+    body.innerHTML = '<div class="focus-empty">🏆 All priority tasks complete today.</div>';
+    return;
+  }
+
+  const groups = {};
+  for (const item of items) {
+    const cat = CATEGORY[item.pid] || '📋 Other';
+    (groups[cat] = groups[cat]||[]).push(item);
+  }
+
+  let html = '';
+  for (const [cat, catItems] of Object.entries(groups)) {
+    html += `<div class="focus-group-label">${cat}</div>`;
+    for (const {t, pid} of catItems) {
+      const st = getStatus(t.id);
+      const isDone = st==='done';
+      const isOv = !!t.overlap;
+      const proj = PROJECTS.find(p=>p.id===pid);
+      let cls = 'focus-item';
+      if (isOv && !isDone) cls += ' is-overlap';
+      if (isDone)          cls += ' focus-done';
+
+      html += `<div class="${cls}" onclick="focusClick('${t.id}')">
+        <div class="focus-check">${isDone?'✓':''}</div>
+        <div class="focus-text">${t.text.replace(/^[^\w\s]*\s*/,'')}</div>
+        <div class="focus-right">
+          ${t.urgent && !isDone ? '<span class="f-urgent-badge">Urgent</span>' : ''}
+          ${isOv && !isDone ? '<span class="f-overlap-badge">⚡ Multi-project</span>' : ''}
+          <span class="f-project-tag">${proj?proj.icon:''}</span>
+        </div>
+      </div>`;
+    }
+  }
+  body.innerHTML = html;
+}
+
+function focusClick(id) {
+  setStatus(id, getStatus(id)==='done' ? 'todo' : 'done');
+}
+
+// ── OVERLAPS ──────────────────────────────────────────────────────────────────
+let expandedOverlaps = {};
+
+function renderOverlaps() {
+  const active = OVERLAP_GROUPS.filter(og => og.taskIds.some(id => getStatus(id)!=='done'));
+  document.getElementById('overlap-pill').textContent = active.length ? active.length : '✓';
+  document.getElementById('overlap-chevron').style.transform = overlapsOpen ? 'rotate(180deg)' : '';
+  const body = document.getElementById('overlap-body');
+  body.style.display = overlapsOpen ? 'block' : 'none';
+
+  if (!active.length) {
+    body.innerHTML = '<div style="padding:10px 16px;font-size:0.78rem;color:#16a34a;font-weight:600;">✅ All overlap tasks complete!</div>';
+    return;
+  }
+  body.innerHTML = active.map(og => {
+    const isExp = !!expandedOverlaps[og.id];
+    return `<div class="overlap-row ${isExp ? 'ov-expanded' : ''}" id="ovrow-${og.id}">
+      <div class="ov-top" onclick="toggleOverlapRow('${og.id}')">
+        <span class="ov-badge">⚡ Saves Time</span>
+        <span class="ov-title">${og.label}</span>
+        <span class="ov-expand">›</span>
+      </div>
+      <div class="ov-details">
+        <div class="ov-desc">${og.desc}</div>
+        <div class="ov-projects">${og.projects}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleOverlapRow(id) {
+  expandedOverlaps[id] = !expandedOverlaps[id];
+  const row = document.getElementById('ovrow-' + id);
+  if (row) row.classList.toggle('ov-expanded', !!expandedOverlaps[id]);
+}
+
+function toggleOverlaps() {
+  overlapsOpen = !overlapsOpen;
+  saveState();
+  renderOverlaps();
+}
+
+// ── PROJECTS ──────────────────────────────────────────────────────────────────
+function renderProjects() {
+  const grid = document.getElementById('projects');
+  grid.innerHTML = '';
+
+  for (const p of PROJECTS) {
+    const total = p.tasks.length;
+    const doneN = p.tasks.filter(t=>getStatus(t.id)==='done').length;
+    const active    = p.tasks.filter(t=>getStatus(t.id)!=='done');
+    const completed = p.tasks.filter(t=>getStatus(t.id)==='done');
+    const pct    = total ? Math.round(doneN/total*100) : 0;
+    const allDone = active.length === 0;
+
+    const urgentA = active.filter(t=>t.urgent);
+    const weekA   = active.filter(t=>!t.urgent && t.deadline && !['Stage','Phase','After'].some(x=>t.deadline.startsWith(x)));
+    const laterA  = active.filter(t=>!t.urgent && (!t.deadline || ['Stage','Phase','After'].some(x=>t.deadline.startsWith(x))));
+
+    let bodyHtml = '';
+    if (allDone) {
+      bodyHtml = `<div class="proj-done-banner">🏆 All tasks complete!</div>`;
+    } else {
+      if (urgentA.length) bodyHtml += `<div class="task-group-lbl urgent">🔴 Urgent</div>` + urgentA.map(taskRowHtml).join('');
+      if (weekA.length)   bodyHtml += `<div class="task-group-lbl week">This Week</div>`   + weekA.map(taskRowHtml).join('');
+      if (laterA.length)  bodyHtml += `<div class="task-group-lbl">Later</div>`             + laterA.map(taskRowHtml).join('');
+    }
+
+    if (completed.length) {
+      const isOpen = !!openArchives[p.id];
+      bodyHtml += `<div class="done-drawer">
+        <span class="done-toggle" onclick="toggleArchive('${p.id}')">${isOpen?'▾':'▸'} ${doneN} completed</span>
+        <div class="done-list" id="arch-${p.id}" style="display:${isOpen?'block':'none'}">
+          ${completed.map(t=>`<div class="done-row">
+            <div class="done-row-text">${t.text.replace(/^[^\w\s]*\s*/,'')}</div>
+            <button class="restore-btn" onclick="setStatus('${t.id}','todo',event)">↩ Restore</button>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'proj-card collapsed';
+    card.id = 'proj-' + p.id;
+    card.innerHTML = `
+      <div class="proj-head" style="background:${p.color}" onclick="toggleProj('${p.id}')">
+        <span class="proj-icon">${p.icon}</span>
+        <div class="proj-info">
+          <div class="proj-name">${p.name}</div>
+          <div class="proj-desc">${p.desc}</div>
+          <div class="proj-prog-wrap">
+            <div class="proj-bar"><div class="proj-bar-fill" style="width:${pct}%"></div></div>
+            <span class="proj-frac">${doneN}/${total}</span>
+          </div>
+        </div>
+        <span class="proj-chev">▼</span>
+      </div>
+      <div class="proj-body">${bodyHtml}</div>`;
+    grid.appendChild(card);
+  }
+}
+
+function taskRowHtml(t) {
+  const st  = getStatus(t.id);
+  const exp = !!expandedTasks[t.id];
+  const hasDetails = t.notes || t.phone || t.url || t.overlap;
+
+  let rowCls = 'task-row';
+  if (t.urgent)           rowCls += ' urgent-row';
+  if (st==='inprogress')  rowCls += ' inprog';
+  if (exp)                rowCls += ' expanded';
+
+  const og = t.overlap ? OVERLAP_GROUPS.find(o=>o.id===t.overlap) : null;
+
+  return `<div class="${rowCls}" id="tr-${t.id}" ${hasDetails ? `onclick="toggleTask('${t.id}')"` : ''}>
+    <div class="task-top">
+      <div class="task-dot"></div>
+      <div class="task-label">${t.text.replace(/^[^\w\s]*\s*/,'')}</div>
+      <div class="task-right">
+        ${t.deadline ? `<span class="t-deadline">${t.deadline}</span>` : ''}
+        ${t.overlap && st!=='done' ? '<span class="t-overlap-dot" title="Completes multiple projects">⚡</span>' : ''}
+        <button class="t-btn t-btn-prog ${st==='inprogress'?'on':''}" onclick="setStatus('${t.id}','inprogress',event)">▶</button>
+        <button class="t-btn t-btn-done" onclick="setStatus('${t.id}','done',event)">✓</button>
+        ${hasDetails ? `<span class="t-expand">›</span>` : ''}
+      </div>
+    </div>
+    ${hasDetails ? `<div class="task-details">
+      ${t.notes ? `<div class="task-notes">${t.notes}</div>` : ''}
+      <div class="task-links">
+        ${t.phone  ? `<a class="t-phone" href="tel:${t.phone.replace(/[^0-9]/g,'')}" onclick="event.stopPropagation()">📞 ${t.phone}</a>` : ''}
+        ${t.url    ? `<a class="t-url"   href="https://${t.url}" target="_blank" onclick="event.stopPropagation()">🔗 ${t.url}</a>` : ''}
+        ${t.overlap ? `<span class="t-overlap-detail">⚡ ${og ? og.projects : 'Multi-project'}</span>` : ''}
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+// ── UI ACTIONS ────────────────────────────────────────────────────────────────
+function toggleTask(id) {
+  expandedTasks[id] = !expandedTasks[id];
+  const row = document.getElementById('tr-'+id);
+  if (row) row.classList.toggle('expanded', !!expandedTasks[id]);
+  const chev = row ? row.querySelector('.t-expand') : null;
+  if (chev) chev.style.transform = expandedTasks[id] ? 'rotate(90deg)' : '';
+}
+
+function toggleProj(id) {
+  const card = document.getElementById('proj-'+id);
+  if (card) card.classList.toggle('collapsed');
+}
+
+function toggleArchive(pid) {
+  openArchives[pid] = !openArchives[pid];
+  saveState();
+  const el = document.getElementById('arch-'+pid);
+  const toggle = el ? el.previousElementSibling : null;
+  if (el) el.style.display = openArchives[pid] ? 'block' : 'none';
+  if (toggle) toggle.innerHTML = `${openArchives[pid]?'▾':'▸'} ${el.children.length} completed`;
+}
+
+function confirmReset() {
+  if (confirm('Reset all tasks to To-Do?')) { taskStatus={}; saveState(); renderAll(); }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadState();
+renderAll();
+setInterval(()=>{ renderHeader(); renderMission(); }, 60000);
+</script>
+</body>
+</html>
